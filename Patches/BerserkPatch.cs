@@ -12,8 +12,10 @@ internal static class BerserkPatch
     private static bool _active;
     private static float _drainAccum;
 
-    // Exactly what we applied, so we can reverse it precisely even if the config
-    // values change while the state is active.
+    // Exactly what we applied — and the avatar we applied it to — so we can reverse it
+    // precisely even if the config changes or the avatar is replaced (respawn) while
+    // the state is active.
+    private static PlayerAvatar? _appliedAvatar;
     private static string? _overlaySteamId;
     private static int _appliedStrengthBonus;
     private static int _appliedLaunchBonus;
@@ -131,6 +133,9 @@ internal static class BerserkPatch
 
     private static void Activate(PlayerAvatar avatar)
     {
+        if (_active)
+            return;  // already active — never stack the bonus on top of itself
+
         string? steamId = PlayerController.instance != null
             ? PlayerController.instance.playerSteamID
             : null;
@@ -159,7 +164,9 @@ internal static class BerserkPatch
         if (avatar.tumble != null)
             avatar.tumble.tumbleLaunch += launchBonus;
 
-        // Remember precisely what we applied so Deactivate reverses the same amounts.
+        // Remember precisely what we applied — and where — so Deactivate reverses the
+        // same amounts on the same avatar.
+        _appliedAvatar = avatar;
         _overlaySteamId = steamId;
         _appliedStrengthBonus = strBonus;
         _appliedLaunchBonus = launchBonus;
@@ -179,10 +186,11 @@ internal static class BerserkPatch
 
         _active = false;
 
-        // Reverse the live component effects on whoever we applied them to.
-        var avatar = PlayerController.instance != null
-            ? PlayerController.instance.playerAvatarScript
-            : null;
+        // Reverse the live component effects on the EXACT avatar we boosted — not a
+        // freshly-fetched one, which after a respawn could be a different avatar whose
+        // base values we'd corrupt. Unity-null-safe: a destroyed avatar compares == null,
+        // in which case there is nothing to reverse (it's gone) and we just drop it.
+        var avatar = _appliedAvatar;
         if (avatar != null)
         {
             if (avatar.physGrabber != null)
@@ -191,13 +199,15 @@ internal static class BerserkPatch
                 avatar.tumble.tumbleLaunch -= _appliedLaunchBonus;
         }
 
-        // Clear the stat overlay.
+        // Always clear the stat overlay, whatever happened to the avatar — this is the
+        // part other mods read, so it must never be left dangling in Character Stats.
         if (!string.IsNullOrEmpty(_overlaySteamId))
         {
             ClearTemporaryBonus(_overlaySteamId!, "Strength");
             ClearTemporaryBonus(_overlaySteamId!, "Launch");
         }
 
+        _appliedAvatar = null;
         _overlaySteamId = null;
         _appliedStrengthBonus = 0;
         _appliedLaunchBonus = 0;
@@ -206,6 +216,15 @@ internal static class BerserkPatch
 
         // Berserk.Logger.LogInfo("Berserk OFF.");
     }
+
+    /// <summary>
+    /// Force the berserk state off whenever the scene/level changes, so neither the
+    /// bonus nor the health drain carries across a transition — and the Character Stats
+    /// overlay can never be left behind on the next level.
+    /// </summary>
+    [HarmonyPatch(typeof(SemiFunc), nameof(SemiFunc.OnSceneSwitch))]
+    [HarmonyPrefix]
+    private static void OnSceneSwitch_Prefix() => ForceDeactivate();
 
     /// <summary>Safe teardown for plugin unload — never throws.</summary>
     internal static void ForceDeactivate()
