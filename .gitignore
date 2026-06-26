@@ -1,0 +1,23 @@
+# Binaries
+**/bin/
+**/obj/
+**/Reference/
+
+# BepInEx
+**/bepinex/
+
+# IDE
+.vs/
+*.user
+*.suo
+
+# OS
+Thumbs.db
+*.DS_Store
+
+# NuGet
+*.nupkg
+project.lock.json
+
+# Misc
+*.log

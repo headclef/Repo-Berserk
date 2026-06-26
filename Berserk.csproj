@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <Authors>headclef</Authors>
+    <Version>1.0.0</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- Add Package Sources -->
+  <PropertyGroup>
+    <RestoreAdditionalProjectSources>
+      https://api.nuget.org/v3/index.json; <!-- Official NuGet Feed -->
+      https://nuget.bepinex.dev/v3/index.json; <!-- BepInEx NuGet Feed -->
+      https://nuget.windows10ce.com/nuget/v3/index.json <!-- ThunderStore Staff Feed -->
+    </RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <!-- Exclude reference code from compilation -->
+  <ItemGroup>
+    <Compile Remove="Reference\**" />
+  </ItemGroup>
+
+  <!-- Package References -->
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all"/>
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all" IncludeAssets="build" />
+    <PackageReference Include="Linkoid.Repo.Plugin.Build" Version="*" PrivateAssets="all" />
+
+    <PackageReference Include="BepInEx.Core" Version="5.*" ExcludeAssets="runtime" />
+    <PackageReference Include="UnityEngine.Modules" Version="2022.3.62" IncludeAssets="compile" PrivateAssets="all"/>
+    <PackageReference Include="R.E.P.O.GameLibs.Steam" Version="*-*" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Reference to Character Stats mod (compile-only, not bundled) -->
+  <ItemGroup>
+    <Reference Include="Character Stats">
+      <HintPath>..\Character Stats\bin\Debug\netstandard2.1\Character Stats.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

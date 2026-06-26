@@ -1,0 +1,77 @@
+# Berserk
+
+A [BepInEx](https://github.com/BepInEx/BepInEx) mod for **R.E.P.O.** that adds a toggleable *berserk* state: bleed health every second in exchange for a big **Strength** and **Tumble Launch** boost. Live fast, hit hard.
+
+## What This Mod Does
+
+Press **B** to toggle berserk on or off. While it's on:
+
+- You **lose 10 HP every second** (configurable — and it *can* kill you).
+- You gain **+5 Strength** levels — stronger grab/throw force, and everything that reads your Strength level (Armor, the UI overlay, …) sees the boost too.
+- You gain **+5 Tumble Launch** levels — more launch force, and if you run **Increase Tumble Damage**, your tumble hits land for a *lot* more.
+
+A pulsing red **BERSERK** badge appears at the top of the screen so you always know it's active. It turns itself off automatically when you die or leave the level.
+
+> It's a glass-cannon trade: enormous burst power for a constant bleed. Pop it for a fight, then turn it off before the drain takes you.
+
+## How It Works (and why it plays nice with other mods)
+
+The boost is applied two ways at once, and **neither touches the saved upgrade data**:
+
+1. **Live game effect** — exactly mirroring the game's own upgrade-apply helpers, but only on the live components:
+   - `physGrabber.grabStrength += 0.2 × StrengthBonus`
+   - `tumble.tumbleLaunch += LaunchBonus`
+2. **Stat-level overlay** — a temporary additive layer in [Character Stats](https://github.com/headclef/Repo-CharacterStats) that other mods read, so Armor / Increase Tumble Damage / UI all treat you as `+5` while berserk.
+
+Because nothing is written into the game's `playerUpgrade*` dictionaries, **Improve never absorbs the bonus and it's never baked into your `.es3` save.** The health drain bypasses **Armor** (it writes health directly instead of going through the damage path), so the bleed is never softened. Everything reverses to the exact applied amount when you toggle off.
+
+## Configuration
+
+Settings are in `BepInEx/config/headclef.Berserk.cfg` or in the **in-game mod config menu**:
+
+| Key | Default | Range | Description |
+|-----|---------|-------|-------------|
+| Toggle Key | `B` | — | Key to toggle the berserk state |
+| Health Drain Per Second | `10` | 0–100 | HP drained every second while active |
+| Strength Bonus | `5` | 0–50 | Temporary Strength levels added while active |
+| Launch Bonus | `5` | 0–50 | Temporary Tumble Launch levels added while active |
+| Can Be Lethal | `true` | — | If `true` the drain can take you to 0 HP and kill you; if `false` it stops at 1 HP |
+| Show Indicator | `true` | — | Show the on-screen BERSERK badge while active |
+
+## Requirements
+
+- [BepInEx 5.x](https://github.com/BepInEx/BepInEx) installed for R.E.P.O.
+- [Character Stats](https://github.com/headclef/Repo-CharacterStats) — required dependency
+
+## Installation
+
+1. Install via **Thunderstore** (recommended) — Character Stats will be installed automatically.
+2. Or manually: place both `Character Stats.dll` and `Berserk.dll` into your `BepInEx/plugins` folder.
+3. Launch the game — the config file is generated on first run.
+
+## Multiplayer
+
+- Runs **per-client** — only you go berserk, and only your local stats/health are affected.
+- Death is fully networked (it uses the game's own death call), so dying while berserk syncs correctly. The drain itself is applied locally, so other players' copy of your health bar may lag slightly until the next sync.
+
+## Development
+
+### Project Structure
+```
+├── Berserk.cs                  # Plugin entry point, config & the BERSERK HUD badge
+├── Patches/
+│   └── BerserkPatch.cs         # Toggle, health drain + death, stat application, auto-off
+└── README.md
+```
+
+### Building
+
+This project is part of the `Repo.slnx` solution and references Character Stats at compile time. Build the **whole solution** so dependencies build in the correct order:
+
+```bash
+dotnet build ../Repo.slnx
+```
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
