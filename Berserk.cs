@@ -12,7 +12,7 @@ public class Berserk : BaseUnityPlugin
 {
     private const string PluginGuid = "headclef.Berserk";
     private const string PluginName = "Berserk";
-    private const string PluginVersion = "1.0.1";
+    private const string PluginVersion = "1.0.2";
 
     internal static Berserk Instance { get; private set; } = null!;
     internal new static ManualLogSource Logger => Instance._logger;
@@ -40,16 +40,23 @@ public class Berserk : BaseUnityPlugin
         this.gameObject.hideFlags = HideFlags.HideAndDontSave;
 
         BindConfiguration();
+        NetworkBridge.Initialize();
         Harmony ??= new Harmony(Info.Metadata.GUID);
         Harmony.PatchAll();
 
         Logger.LogInfo($"{Info.Metadata.GUID} v{Info.Metadata.Version} has loaded!");
     }
 
+    private void Update()
+    {
+        NetworkBridge.Update();
+    }
+
     private void OnDestroy()
     {
         // Make sure we never leave a bonus or a half-drained state behind.
         Patches.BerserkPatch.ForceDeactivate();
+        NetworkBridge.Shutdown();
         Harmony?.UnpatchSelf();
     }
 

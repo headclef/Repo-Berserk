@@ -25,6 +25,8 @@ The boost is applied two ways at once, and **neither touches the saved upgrade d
 
 Because nothing is written into the game's `playerUpgrade*` dictionaries, **Improve never absorbs the bonus and it's never baked into your `.es3` save.** The health drain bypasses **Armor** (it writes health directly instead of going through the damage path), so the bleed is never softened. Everything reverses to the exact applied amount when you toggle off.
 
+**In co-op as a client** there is a third piece: the game computes grab forces and the tumble-launch impulse **on the host's machine**, from the host's copy of your character — a purely local boost would change nothing there. So Berserk carries the bonus over a small network bridge: when you toggle on, your bonus is sent to the host, and the **Berserk installed on the host** applies it to your character in its simulation (and reverses it when you toggle off, die, or the level ends). A handshake checks the host actually runs Berserk first — if it doesn't, the toggle refuses to activate, so you can never bleed health for nothing.
+
 ## Configuration
 
 Settings are in `BepInEx/config/headclef.Berserk.cfg` or in the **in-game mod config menu**:
@@ -51,7 +53,10 @@ Settings are in `BepInEx/config/headclef.Berserk.cfg` or in the **in-game mod co
 
 ## Multiplayer
 
-- Runs **per-client** — only you go berserk, and only your local stats/health are affected.
+- **As the host or in single player:** works with no requirements — your machine is the one simulating the physics.
+- **As a client:** the **host must also have Berserk installed.** Grab and launch physics run on the host, so your bonus has to be applied there; the bridge does that automatically once the handshake confirms the host runs Berserk. Your own config values (bonus sizes, drain rate) are what gets applied — the host's config does not affect you.
+- **If the host doesn't have Berserk:** pressing the toggle does nothing (a log line explains why). No drain, no half-active state — the mod is simply inactive for that lobby.
+- Only you go berserk — the bonus is applied to your character only, and the bridge can never speak for another player (it mirrors the game's own owner-only RPC checks).
 - Death is fully networked (it uses the game's own death call), so dying while berserk syncs correctly. The drain itself is applied locally, so other players' copy of your health bar may lag slightly until the next sync.
 
 ## Development
@@ -59,6 +64,7 @@ Settings are in `BepInEx/config/headclef.Berserk.cfg` or in the **in-game mod co
 ### Project Structure
 ```
 ├── Berserk.cs                  # Plugin entry point, config & the BERSERK HUD badge
+├── NetworkBridge.cs            # Co-op bridge — handshake + host-side stat application
 ├── Patches/
 │   └── BerserkPatch.cs         # Toggle, health drain + death, stat application, auto-off
 └── README.md
