@@ -136,18 +136,6 @@ internal static class BerserkPatch
         if (_active)
             return;  // already active — never stack the bonus on top of itself
 
-        // As a co-op CLIENT both real effects live on the host's machine (grab forces and
-        // the launch impulse are computed by the master from ITS replica of our components),
-        // so without Berserk on the host the toggle would drain health for literally
-        // nothing. Refuse to activate until the host's Berserk answers the handshake.
-        if (!NetworkBridge.HostReady)
-        {
-            Berserk.Logger.LogWarning(
-                "Berserk not activated: the host does not run Berserk, so the strength/launch " +
-                "boost could not take effect (grab and launch physics are simulated on the host).");
-            return;
-        }
-
         string? steamId = PlayerController.instance != null
             ? PlayerController.instance.playerSteamID
             : null;
@@ -185,9 +173,6 @@ internal static class BerserkPatch
         _appliedGrabDelta = grabDelta;
         _drainAccum = 0f;
         _active = true;
-
-        // As a co-op client, carry the bonus to the machine that actually simulates it.
-        NetworkBridge.BroadcastState(strBonus, launchBonus);
 
         // Berserk.Logger.LogInfo(
         //     $"Berserk ON (+{strBonus} Strength, +{launchBonus} Launch, " +
@@ -229,9 +214,6 @@ internal static class BerserkPatch
         _appliedGrabDelta = 0f;
         _drainAccum = 0f;
 
-        // Tell the host's replica to drop the bonus too (no-op when we are the host).
-        NetworkBridge.BroadcastState(0, 0);
-
         // Berserk.Logger.LogInfo("Berserk OFF.");
     }
 
@@ -242,11 +224,7 @@ internal static class BerserkPatch
     /// </summary>
     [HarmonyPatch(typeof(SemiFunc), nameof(SemiFunc.OnSceneSwitch))]
     [HarmonyPrefix]
-    private static void OnSceneSwitch_Prefix()
-    {
-        ForceDeactivate();
-        NetworkBridge.OnSceneSwitch();
-    }
+    private static void OnSceneSwitch_Prefix() => ForceDeactivate();
 
     /// <summary>Safe teardown for plugin unload — never throws.</summary>
     internal static void ForceDeactivate()
