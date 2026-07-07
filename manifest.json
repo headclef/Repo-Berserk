@@ -1,6 +1,6 @@
 {
     "name": "Berserk",
-    "version_number": "1.0.2",
+    "version_number": "1.0.3",
     "website_url": "https://github.com/headclef/Repo-Berserk",
     "description": "Toggle a berserk state: bleed health every second in exchange for a big Strength and Tumble Launch boost in R.E.P.O.",
     "dependencies": [
