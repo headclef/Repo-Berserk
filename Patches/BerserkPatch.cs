@@ -8,6 +8,9 @@ namespace Berserk.Patches;
 [HarmonyPatch]
 internal static class BerserkPatch
 {
+    // Identifies our contribution to Relay, which sums every mod's report per stat.
+    private const string RelaySource = "headclef.Berserk";
+
     // ── State ──
     private static bool _active;
     private static float _drainAccum;
@@ -59,20 +62,24 @@ internal static class BerserkPatch
     /// <c>RpcTarget.MasterClient</c> RPC. A co-op client writing <c>grabStrength</c> and
     /// <c>tumbleLaunch</c> locally changes nothing at all.
     ///
-    /// The health drain, on the other hand, is entirely local and works perfectly. So without
-    /// this guard a client pays the full cost and receives none of the benefit — strictly
-    /// worse than not running the mod, and made worse still by the Character Stats overlay,
-    /// which would show a boosted Strength/Launch level that does nothing.
+    /// The health drain, on the other hand, is entirely local and works perfectly. So a client
+    /// that activates without the bonus landing pays the full cost and receives none of the
+    /// benefit — strictly worse than not running the mod, and made worse still by the
+    /// Character Stats overlay, which would show a boosted level that does nothing.
     ///
-    /// We therefore refuse to activate on a co-op client. Berserk always works as the host
-    /// and in single player.
+    /// <see cref="global::Relay.Relay.CanDeliver"/> answers exactly that question: it is true
+    /// as the host and in single player, where our writes are the simulation, and on a co-op
+    /// client only once the bridge is switched on AND the host has proved it runs Relay too.
+    /// So the cost can never run without the payoff.
     /// </summary>
     private static bool CanActivate(out string reason)
     {
-        if (!SemiFunc.IsMasterClientOrSingleplayer())
+        if (!global::Relay.Relay.CanDeliver)
         {
-            reason = "you are a co-op client, and R.E.P.O. simulates Grab Strength and Tumble " +
-                     "Launch on the host — the bonus could not reach you, but the health drain would";
+            reason = "you are a co-op client and the Relay bridge is not delivering — R.E.P.O. " +
+                     "simulates Grab Strength and Tumble Launch on the host, so the bonus could " +
+                     "not reach you while the health drain still would. Turn Relay's Multiplayer " +
+                     "switch on, and make sure the host runs Relay with it on too";
             return false;
         }
 
@@ -199,11 +206,22 @@ internal static class BerserkPatch
         // fields only (no dictionary write):
         //   UpdateGrabStrengthRightAway: physGrabber.grabStrength += 0.2 * level
         //   UpdateTumbleLaunchRightAway: tumble.tumbleLaunch       += level
+        // This is what makes the boost real as the host and in single player, where our own
+        // components ARE the simulation.
         float grabDelta = 0.2f * strBonus;
         if (avatar.physGrabber != null)
             avatar.physGrabber.grabStrength += grabDelta;
         if (avatar.tumble != null)
             avatar.tumble.tumbleLaunch += launchBonus;
+
+        // ── Co-op client: hand the same numbers to Relay ──
+        // As a client the writes above reach nothing, because the master simulates these two
+        // stats from ITS replica of us. Relay reports them to the host, which applies them
+        // there. Relay sums every contributor and writes once, so Improve's allocations and
+        // our bonus stack instead of fighting over the same field. Harmless as the host: Relay
+        // never bridges the local player.
+        global::Relay.Relay.Report(RelaySource, global::Relay.Relay.StatGrabStrength, strBonus);
+        global::Relay.Relay.Report(RelaySource, global::Relay.Relay.StatTumbleLaunch, launchBonus);
 
         // Remember precisely what we applied — and where — so Deactivate reverses the
         // same amounts on the same avatar.
@@ -247,6 +265,9 @@ internal static class BerserkPatch
             ClearTemporaryBonus(_overlaySteamId!, "Strength");
             ClearTemporaryBonus(_overlaySteamId!, "Launch");
         }
+
+        // Withdraw from Relay too, so the host stops applying our bonus to its replica of us.
+        global::Relay.Relay.Clear(RelaySource);
 
         _appliedAvatar = null;
         _overlaySteamId = null;

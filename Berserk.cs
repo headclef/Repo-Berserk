@@ -8,11 +8,12 @@ namespace Berserk;
 
 [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
 [BepInDependency("headclef.CharacterStats", BepInDependency.DependencyFlags.HardDependency)]
+[BepInDependency("headclef.Relay", BepInDependency.DependencyFlags.HardDependency)]
 public class Berserk : BaseUnityPlugin
 {
     private const string PluginGuid = "headclef.Berserk";
     private const string PluginName = "Berserk";
-    private const string PluginVersion = "1.0.5";
+    private const string PluginVersion = "1.1.0";
 
     internal static Berserk Instance { get; private set; } = null!;
     internal new static ManualLogSource Logger => Instance._logger;

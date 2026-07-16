@@ -53,7 +53,8 @@ Settings are in `BepInEx/config/headclef.Berserk.cfg` or in the **in-game mod co
 
 - Runs **per-client** — only you go berserk, and only your local stats/health are affected.
 - **As the host or in single player**, both the Strength and Tumble Launch boosts apply in full.
-- **As a co-op client, Berserk stays off** and tells you why in the log. R.E.P.O. simulates grab and launch physics on the *host's* machine, from the host's own copy of your character, so neither of Berserk's effects can reach you from a client-side mod. The health drain, however, is local and would work perfectly — so activating would cost you the health and give you nothing back, while the Character Stats overlay showed a boosted level that did nothing. Refusing outright is the honest behaviour; this is a game-engine limitation, not a config option.
+- **As a co-op client**, Berserk works through **[Relay](https://github.com/headclef/Repo-Relay)**, which it depends on. R.E.P.O. simulates grab and launch physics on the *host's* machine, from the host's own copy of your character, so neither of Berserk's effects can reach you by writing them locally. Relay reports them to the host, where they are applied to that copy. Turn Relay's **Multiplayer → Enabled** switch on, and make sure the host runs Relay with it on too.
+- **If the bridge cannot deliver, Berserk stays off** and tells you why in the log — it never activates on a client that would pay the health drain and receive nothing. Nothing to configure in Berserk itself: it asks Relay whether the boost can land, and only then lets you toggle.
 - Death is fully networked (it uses the game's own death call), so dying while berserk syncs correctly. The drain itself is applied locally, so other players' copy of your health bar may lag slightly until the next sync.
 
 ## Development
