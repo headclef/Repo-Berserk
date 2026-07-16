@@ -38,24 +38,56 @@ Settings are in `BepInEx/config/headclef.Berserk.cfg` or in the **in-game mod co
 | Can Be Lethal | `true` | — | If `true` the drain can take you to 0 HP and kill you; if `false` it stops at 1 HP |
 | Show Indicator | `true` | — | Show the on-screen BERSERK badge while active |
 
+**Berserk itself has no multiplayer setting.** If you play as a co-op client, the one switch that matters lives in Relay — see [Multiplayer](#multiplayer).
+
 ## Requirements
 
 - [BepInEx 5.x](https://github.com/BepInEx/BepInEx) installed for R.E.P.O.
 - [Character Stats](https://github.com/headclef/Repo-CharacterStats) — required dependency
+- **[Relay](https://github.com/headclef/Repo-Relay) — required as of 1.1.0.** Berserk will not load without it. Thunderstore installs it for you; if you install manually, install Relay too.
 
 ## Installation
 
-1. Install via **Thunderstore** (recommended) — Character Stats will be installed automatically.
-2. Or manually: place both `Character Stats.dll` and `Berserk.dll` into your `BepInEx/plugins` folder.
+1. Install via **Thunderstore** (recommended) — Character Stats and Relay will be installed automatically.
+2. Or manually: place `Character Stats.dll`, `Relay.dll` and `Berserk.dll` into your `BepInEx/plugins` folder.
 3. Launch the game — the config file is generated on first run.
+4. Playing as a **co-op client**? Turn Relay's switch on — see [Multiplayer](#multiplayer). Without it Berserk will simply refuse to activate, on purpose.
+
+### Upgrading from 1.0.x
+
+- **1.1.0 requires Relay.** Nothing else changes: every Berserk setting keeps its name, its place and your value.
+- **1.0.5 and earlier refused to work as a co-op client** (1.0.4 and earlier were worse — see below). With Relay switched on, 1.1.0 works as a client for the first time.
+- If you play only single player or only as the host, nothing about your setup changes.
 
 ## Multiplayer
 
-- Runs **per-client** — only you go berserk, and only your local stats/health are affected.
-- **As the host or in single player**, both the Strength and Tumble Launch boosts apply in full.
-- **As a co-op client**, Berserk works through **[Relay](https://github.com/headclef/Repo-Relay)**, which it depends on. R.E.P.O. simulates grab and launch physics on the *host's* machine, from the host's own copy of your character, so neither of Berserk's effects can reach you by writing them locally. Relay reports them to the host, where they are applied to that copy. Turn Relay's **Multiplayer → Enabled** switch on, and make sure the host runs Relay with it on too.
-- **If the bridge cannot deliver, Berserk stays off** and tells you why in the log — it never activates on a client that would pay the health drain and receive nothing. Nothing to configure in Berserk itself: it asks Relay whether the boost can land, and only then lets you toggle.
+- Runs **per-client** — only you go berserk, and only your own stats and health are affected.
+- **As the host or in single player**, both boosts apply in full. Nothing below matters to you.
 - Death is fully networked (it uses the game's own death call), so dying while berserk syncs correctly. The drain itself is applied locally, so other players' copy of your health bar may lag slightly until the next sync.
+
+### As a co-op client — turn Relay on, or Berserk stays off
+
+Berserk's two effects are **Grab Strength** and **Tumble Launch**, and those are precisely the two stats R.E.P.O. computes on the **host**, from the host's own copy of your character. Your machine is never asked, and every message the game has for changing a stat is host-only by design. So writing them locally does exactly nothing for a client.
+
+The health drain, however, is local and works perfectly. That combination is the trap: **all cost, no benefit.** Up to 1.0.4 nothing stopped you from activating, so a client burned health for a boost that never existed, while the badge and the stat overlay cheerfully showed a bonus that did nothing.
+
+So Berserk asks [Relay](https://github.com/headclef/Repo-Relay) one question before it will turn on: *can this boost actually be delivered?*
+
+| Situation | Berserk |
+|---|---|
+| Single player, or you are the host | Works — your writes are the simulation |
+| Client, Relay switched off | **Refuses**, and says why in the log |
+| Client, Relay on but the host does not run it | **Refuses** — the host never answers, so nothing could land |
+| Client, Relay on for both of you | Works — Relay applies the boost on the host |
+
+To use it as a client, **you and the host both**:
+
+1. Have Relay installed (it comes with Berserk).
+2. Set `BepInEx/config/headclef.Relay.cfg` → `[Multiplayer]` → `Enabled = true`, or use the in-game mod config menu.
+
+There is nothing to set in Berserk. If it refuses, the log line tells you which half is missing. Relay ships **off by default** because an earlier version of that bridge broke multiplayer connect — read Relay's readme before switching it on.
+
+Improve's allocations and Berserk's boost **stack** rather than fight: both report to Relay, which adds them up and applies the total once. That is the whole reason Relay exists as its own mod.
 
 ## Development
 
