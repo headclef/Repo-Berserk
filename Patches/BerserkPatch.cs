@@ -50,6 +50,37 @@ internal static class BerserkPatch
     }
 
     /// <summary>
+    /// Whether the berserk state may be turned on at all.
+    ///
+    /// Both of Berserk's real effects are consumed by R.E.P.O. on the HOST's machine, from
+    /// the host's own replica of the player: grab forces come from
+    /// <c>PhysGrabObject.PhysicsGrabbingManipulation</c>, which returns early on non-masters,
+    /// and the launch force is computed in <c>PlayerTumble.TumbleSet</c>, reached only by a
+    /// <c>RpcTarget.MasterClient</c> RPC. A co-op client writing <c>grabStrength</c> and
+    /// <c>tumbleLaunch</c> locally changes nothing at all.
+    ///
+    /// The health drain, on the other hand, is entirely local and works perfectly. So without
+    /// this guard a client pays the full cost and receives none of the benefit — strictly
+    /// worse than not running the mod, and made worse still by the Character Stats overlay,
+    /// which would show a boosted Strength/Launch level that does nothing.
+    ///
+    /// We therefore refuse to activate on a co-op client. Berserk always works as the host
+    /// and in single player.
+    /// </summary>
+    private static bool CanActivate(out string reason)
+    {
+        if (!SemiFunc.IsMasterClientOrSingleplayer())
+        {
+            reason = "you are a co-op client, and R.E.P.O. simulates Grab Strength and Tumble " +
+                     "Launch on the host — the bonus could not reach you, but the health drain would";
+            return false;
+        }
+
+        reason = string.Empty;
+        return true;
+    }
+
+    /// <summary>
     /// Postfix on PlayerController.Update — runs for the local player. Handles the
     /// toggle key, the per-frame health drain, and the auto-off safety conditions.
     /// </summary>
@@ -77,7 +108,12 @@ internal static class BerserkPatch
                 if (_active)
                     Deactivate();
                 else if (avatar != null && !avatar.deadSet && SemiFunc.RunIsLevel())
-                    Activate(avatar);
+                {
+                    if (CanActivate(out string reason))
+                        Activate(avatar);
+                    else
+                        Berserk.Logger.LogWarning($"Berserk stayed off: {reason}.");
+                }
             }
 
             // Drain while active.
@@ -135,6 +171,11 @@ internal static class BerserkPatch
     {
         if (_active)
             return;  // already active — never stack the bonus on top of itself
+
+        // Authoritative gate, repeated here so no future caller can start the drain on a
+        // machine where the bonus cannot land. See CanActivate.
+        if (!CanActivate(out _))
+            return;
 
         string? steamId = PlayerController.instance != null
             ? PlayerController.instance.playerSteamID

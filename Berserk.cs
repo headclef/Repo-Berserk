@@ -12,7 +12,7 @@ public class Berserk : BaseUnityPlugin
 {
     private const string PluginGuid = "headclef.Berserk";
     private const string PluginName = "Berserk";
-    private const string PluginVersion = "1.0.4";
+    private const string PluginVersion = "1.0.5";
 
     internal static Berserk Instance { get; private set; } = null!;
     internal new static ManualLogSource Logger => Instance._logger;
