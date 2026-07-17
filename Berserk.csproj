@@ -46,4 +46,21 @@
     </Reference>
   </ItemGroup>
 
+  <!--
+    Deploy ONLY the assembly to the game. The build package copies every loose file beside the
+    project into BepInEx/plugins - README, manifest.json, LICENSE, the full-size store icons,
+    even .gitignore - and BepInEx reads none of them. Across the suite that was 66 MB of plugins
+    folder holding 374 KB of actual mod, and a build nobody could just hand to a friend.
+
+    Filtering the final list, rather than tagging each file, stays correct however a file picked
+    up its copy metadata and whatever else lands beside the project later. This project builds a
+    single .dll and nothing else, so nothing else is needed. Thunderstore and NexusMods packages
+    are unaffected: pack-dists.ps1 assembles those from the project folder, not from this output.
+  -->
+  <Target Name="DeployDllOnly" AfterTargets="GetCopyToPluginOutputItems">
+    <ItemGroup>
+      <CopyToPluginOutputItems Remove="@(CopyToPluginOutputItems)" Condition="'%(Extension)' != '.dll'" />
+    </ItemGroup>
+  </Target>
+
 </Project>
